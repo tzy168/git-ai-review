@@ -16,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
     () =>
       vscode.commands.executeCommand(
         "workbench.action.openSettings",
-        "@ext:git-ai-review"
+        "@ext:refe.git-ai-review"
       )
   );
 

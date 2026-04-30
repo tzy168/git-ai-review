@@ -3,7 +3,10 @@
     "displayName": "Git AI Review",
     "description": "Compare git branches with AI-powered code review (DeepSeek)",
     "version": "1.0.0",
-    "publisher": "your-name",
+    "publisher": "refe",
+    "author": "refe",
+    "icon": "media/icon.png",
+    "overview": "在工作区 Git 仓库中选择目标分支，与当前分支做 diff 对比，通过 DeepSeek API 生成结构化代码审查报告（Markdown），支持模型/报告语言/分块大小与输出目录等设置。在设置中搜索 'git-ai-review' ，配置API Key,可选模型等，适用于合并前快速做 AI 辅助 Review。",
     "engines": {
       "vscode": "^1.80.0"
     },
