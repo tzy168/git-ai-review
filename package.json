@@ -10,7 +10,10 @@
     "categories": ["Other"],
     "keywords": ["git", "review", "ai", "deepseek", "diff", "cursor"],
     "main": "./out/extension.js",
-    "activationEvents": [],
+    "activationEvents": [
+      "onCommand:git-ai-review.start",
+      "onCommand:git-ai-review.openSettings"
+    ],
     "contributes": {
       "commands": [
         {
@@ -44,7 +47,7 @@
           "git-ai-review.model": {
             "type": "string",
             "default": "deepseek-chat",
-            "enum": ["deepseek-v4-flash", "deepseek-chat", "deepseek-coder", "deepseek-reasoner"],
+            "enum": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-coder", "deepseek-reasoner"],
             "description": "使用的模型"
           },
           "git-ai-review.language": {
@@ -70,7 +73,7 @@
       "compile": "tsc -p ./",
       "watch": "tsc -watch -p ./",
       "lint": "eslint src --ext ts",
-      "package": "vsce package --no-dependencies",
+      "package": "vsce package",
       "pretest": "npm run compile"
     },
     "devDependencies": {
