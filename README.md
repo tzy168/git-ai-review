@@ -1,7 +1,8 @@
 # 克隆项目
 git clone <your-repo>
+```
 cd git-ai-review
-
+```
 # 安装依赖
 npm install
 
