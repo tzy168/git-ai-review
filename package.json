@@ -1,6 +1,6 @@
 {
-    "name": "git-ai-review",
-    "displayName": "Git AI Review",
+    "name": "ai-git-branch-diff-review",
+    "displayName": "AI Git Branch Diff Review",
     "description": "Compare git branches with AI-powered code review (DeepSeek)",
     "version": "1.0.0",
     "publisher": "refe",
