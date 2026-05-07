@@ -91,7 +91,7 @@ ${reviewContent}
 
 ---
 
-*本报告由 [Git AI Review](https://github.com) 插件自动生成，仅供参考。*
+*本报告由 [Git AI Review](https://github.com/tzy168/git-ai-review) 插件自动生成，仅供参考。*
 `;
   }
 }
