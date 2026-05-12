@@ -1,7 +1,13 @@
 import OpenAI from "openai";
 import * as vscode from "vscode";
 import { DiffResult, FileDiff } from "./gitService";
-import { buildReviewPrompt, buildMergePrompt } from "./prompts";
+import {
+  buildReviewPrompt,
+  buildMergePrompt,
+  buildTechSpecPrompt,
+  buildTechSpecMergePrompt,
+  DocumentType,
+} from "./prompts";
 
 export interface LLMConfig {
   apiKey: string;
@@ -42,51 +48,69 @@ export class LLMService {
     diffResult: DiffResult,
     onProgress?: (msg: string) => void
   ): Promise<string> {
+    return this.generate(diffResult, "review", onProgress);
+  }
+
+  /**
+   * 统一生成入口
+   * 支持 review / tech-spec 两种文档类型
+   */
+  async generate(
+    diffResult: DiffResult,
+    docType: DocumentType = "review",
+    onProgress?: (msg: string) => void
+  ): Promise<string> {
     const { fileDiffs, baseBranch, headBranch } = diffResult;
     const { maxCharsPerChunk, language } = this.config;
+
+    const isTechSpec = docType === "tech-spec";
+    const actionLabel = isTechSpec ? "生成技术方案" : "分析";
 
     // 计算总 diff 字符数
     const totalChars = fileDiffs.reduce((sum, f) => sum + f.diff.length, 0);
 
     // ── 小 diff：一次性发送 ──
     if (totalChars <= maxCharsPerChunk) {
-      onProgress?.(`正在分析 (${(totalChars / 1000).toFixed(0)}K 字符)...`);
-      return this.callLLM(
-        buildReviewPrompt(baseBranch, headBranch, fileDiffs, language)
-      );
+      onProgress?.(`正在${actionLabel} (${(totalChars / 1000).toFixed(0)}K 字符)...`);
+      const prompt = isTechSpec
+        ? buildTechSpecPrompt(baseBranch, headBranch, fileDiffs, language)
+        : buildReviewPrompt(baseBranch, headBranch, fileDiffs, language);
+      return this.callLLM(prompt, isTechSpec);
     }
 
     // ── 大 diff：分块处理 ──
     const chunks = this.chunkFiles(fileDiffs, maxCharsPerChunk);
     onProgress?.(
-      `Diff 较大 (${(totalChars / 1000).toFixed(0)}K 字符)，分 ${chunks.length} 块分析...`
+      `Diff 较大 (${(totalChars / 1000).toFixed(0)}K 字符)，分 ${chunks.length} 块${actionLabel}...`
     );
 
-    const partialReviews: string[] = [];
+    const partialResults: string[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       const chunkChars = chunk.reduce((s, f) => s + f.diff.length, 0);
       onProgress?.(
-        `分析分块 ${i + 1}/${chunks.length}（${chunk.length} 个文件, ${(chunkChars / 1000).toFixed(0)}K 字符）...`
+        `${actionLabel}分块 ${i + 1}/${chunks.length}（${chunk.length} 个文件, ${(chunkChars / 1000).toFixed(0)}K 字符）...`
       );
 
-      const review = await this.callLLM(
-        buildReviewPrompt(baseBranch, headBranch, chunk, language)
-      );
-      partialReviews.push(review);
+      const prompt = isTechSpec
+        ? buildTechSpecPrompt(baseBranch, headBranch, chunk, language)
+        : buildReviewPrompt(baseBranch, headBranch, chunk, language);
+      const result = await this.callLLM(prompt, isTechSpec);
+      partialResults.push(result);
     }
 
     // 只有一个分块（单文件超长的情况）
-    if (partialReviews.length === 1) {
-      return partialReviews[0];
+    if (partialResults.length === 1) {
+      return partialResults[0];
     }
 
     // 合并多分块结果
     onProgress?.("正在合并各分块结果...");
-    return this.callLLM(
-      buildMergePrompt(baseBranch, headBranch, partialReviews, language)
-    );
+    const mergePrompt = isTechSpec
+      ? buildTechSpecMergePrompt(baseBranch, headBranch, partialResults, language)
+      : buildMergePrompt(baseBranch, headBranch, partialResults, language);
+    return this.callLLM(mergePrompt, isTechSpec);
   }
 
   /**
@@ -141,15 +165,18 @@ export class LLMService {
   /**
    * 调用 DeepSeek API
    */
-  private async callLLM(prompt: string): Promise<string> {
+  private async callLLM(prompt: string, isTechSpec: boolean = false): Promise<string> {
     try {
+      const systemContent = isTechSpec
+        ? "你是一位资深软件架构师和技术文档专家。你擅长从代码变更中反向推导技术方案，梳理需求背景、架构设计、接口定义、数据模型和实现细节。"
+        : "你是一位资深代码审查专家。你擅长发现潜在 Bug、安全漏洞、性能问题，并给出具体、可操作的改进建议。";
+
       const response = await this.client.chat.completions.create({
         model: this.config.model,
         messages: [
           {
             role: "system",
-            content:
-              "你是一位资深代码审查专家。你擅长发现潜在 Bug、安全漏洞、性能问题，并给出具体、可操作的改进建议。",
+            content: systemContent,
           },
           { role: "user", content: prompt },
         ],

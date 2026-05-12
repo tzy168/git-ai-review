@@ -1,3 +1,5 @@
+export type DocumentType = "review" | "tech-spec";
+
 export function buildReviewPrompt(
     baseBranch: string,
     headBranch: string,
@@ -118,5 +120,110 @@ export function buildReviewPrompt(
   ${parts}
   
   请输出合并后的完整报告：`;
-  }
+}
+
+/**
+ * 生成前端技术方案文档的 prompt
+ * 根据代码变更反向推导前端实现方案
+ */
+export function buildTechSpecPrompt(
+  baseBranch: string,
+  headBranch: string,
+  fileDiffs: { filePath: string; diff: string }[],
+  language: string = "中文"
+): string {
+  const diffBlock = fileDiffs
+    .map((f) => `### 文件: ${f.filePath}\n\`\`\`diff\n${f.diff}\n\`\`\``)
+    .join("\n\n");
+
+  const langInstruction = language === "English" ? "Please respond in English." : "请用中文回复。";
+
+  return `你是一位资深前端技术专家。请根据以下 Git 分支的代码变更，反向推导出前端技术方案文档。
+
+## 上下文信息
+- **基准分支 (base)**: ${baseBranch}
+- **实现分支 (head)**: ${headBranch}
+- **变更文件数**: ${fileDiffs.length}
+
+## 变更内容（Diff）
+${diffBlock}
+
+---
+
+${langInstruction}
+
+请按以下精简结构输出前端技术方案：
+
+## 一、需求概述
+- 本次变更要解决什么问题
+- 涉及的主要页面/组件/功能
+
+## 二、技术实现
+
+### 2.1 组件/页面结构
+- 新增或修改的组件清单
+- 组件关系与职责
+
+### 2.2 关键逻辑
+- 核心交互逻辑说明
+- 状态管理方案（如有）
+
+### 2.3 接口对接
+- 调用的 API 接口
+- 数据流转方式
+
+## 三、实现细节
+
+对每个变更文件简要说明：
+
+### \`文件路径\`
+- **作用**: 该文件承担什么职责
+- **要点**: 关键实现或技术点
+
+## 四、依赖与配置
+
+- 新增依赖包及用途
+- 新增配置项或环境变量
+
+## 五、测试与验收
+
+- 需要验证的功能点
+- 关键交互的测试建议
+
+---
+
+用一段话总结本次变更的技术要点。`;
+}
+
+/**
+ * 用于分块合并前端技术方案的 prompt
+ */
+export function buildTechSpecMergePrompt(
+  baseBranch: string,
+  headBranch: string,
+  partialSpecs: string[],
+  language: string = "中文"
+): string {
+  const langInstruction = language === "English" ? "Please respond in English." : "请用中文回复。";
+
+  const parts = partialSpecs
+    .map((r, i) => `### 第 ${i + 1} 部分\n\n${r}`)
+    .join("\n\n---\n\n");
+
+  return `以下是 Git 分支 "${headBranch}" 相对于 "${baseBranch}" 的多个文件分组独立生成的前端技术方案。
+请将它们合并为一份完整、连贯的前端技术方案文档。
+
+要求：
+1. 去除重复内容
+2. 统一格式和风格
+3. 综合所有分组给出总体实现概览
+4. 保持以下结构：需求概述 → 技术实现 → 实现细节 → 依赖与配置 → 测试与验收
+
+${langInstruction}
+
+## 各分组技术方案
+${parts}
+
+请输出合并后的完整前端技术方案：`;
+}
   
