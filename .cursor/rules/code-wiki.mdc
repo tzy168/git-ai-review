@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+每次新对话时，优先阅读CODE_WIKI.md，以查看项目整体信息再进行回答生成
