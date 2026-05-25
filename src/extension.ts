@@ -72,7 +72,7 @@ async function runReview() {
   const prioritized = prioritizeBranches(candidates);
 
   const baseBranch = await vscode.window.showQuickPick(prioritized, {
-    placeHolder: "选择要比较的目标分支 (base)",
+    placeHolder: "选择目标分支，将审查当前分支中未包含在该目标分支的提交",
     title: `当前分支: ${currentBranch}`,
     matchOnDescription: true,
   });
@@ -90,7 +90,7 @@ async function runReview() {
       },
       async (progress) => {
         progress.report({
-          message: `比较 ${baseBranch} ↔ ${currentBranch}...`,
+          message: `比较 ${currentBranch} 中未包含在 ${baseBranch} 的提交...`,
         });
         return git.getDiff(baseBranch, currentBranch);
       }
@@ -102,7 +102,7 @@ async function runReview() {
 
   if (diffResult.fileDiffs.length === 0) {
     vscode.window.showInformationMessage(
-      `${baseBranch} 和 ${currentBranch} 之间没有差异`
+      `${currentBranch} 中没有未包含在 ${baseBranch} 的提交差异`
     );
     return;
   }
