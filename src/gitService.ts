@@ -41,27 +41,22 @@ export class GitService {
     }
   }
 
-  /**
-   * 获取两个分支之间的 diff，按文件拆分
-   */
   async getDiff(baseBranch: string, headBranch: string): Promise<DiffResult> {
-    // 确保分支存在
     await this.ensureBranchExists(baseBranch);
+
+    const mergeBase = (await this.git.raw(["merge-base", baseBranch, headBranch])).trim();
 
     const fileDiffs: FileDiff[] = [];
     let totalAdditions = 0;
     let totalDeletions = 0;
 
-    // 获取变更文件列表及统计
-    const diffSummary = await this.git.diffSummary([baseBranch, headBranch]);
+    const diffSummary = await this.git.diffSummary([mergeBase, headBranch]);
 
     for (const file of diffSummary.files) {
       const filePath = "file" in file ? file.file : (file as any).file;
 
-      // 获取单个文件的 diff
-      const diff = await this.git.diff([baseBranch, "--", filePath]);
+      const diff = await this.git.diff([mergeBase, headBranch, "--", filePath]);
 
-      // 统计
       const adds = (diff.match(/^\+[^+]/gm) || []).length;
       const dels = (diff.match(/^-[^-]/gm) || []).length;
 

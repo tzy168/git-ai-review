@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { GitService } from "./gitService";
 import { LLMService, getLLMConfig } from "./llmService";
 import { ReportGenerator } from "./reportGenerator";
+import { DocumentType } from "./prompts";
 
 export function activate(context: vscode.ExtensionContext) {
   // ── 主命令 ──
@@ -71,7 +72,7 @@ async function runReview() {
   const prioritized = prioritizeBranches(candidates);
 
   const baseBranch = await vscode.window.showQuickPick(prioritized, {
-    placeHolder: "选择要比较的目标分支 (base)",
+    placeHolder: "选择目标分支，将审查当前分支中未包含在该目标分支的提交",
     title: `当前分支: ${currentBranch}`,
     matchOnDescription: true,
   });
@@ -89,7 +90,7 @@ async function runReview() {
       },
       async (progress) => {
         progress.report({
-          message: `比较 ${baseBranch} ↔ ${currentBranch}...`,
+          message: `比较 ${currentBranch} 中未包含在 ${baseBranch} 的提交...`,
         });
         return git.getDiff(baseBranch, currentBranch);
       }
@@ -101,35 +102,43 @@ async function runReview() {
 
   if (diffResult.fileDiffs.length === 0) {
     vscode.window.showInformationMessage(
-      `${baseBranch} 和 ${currentBranch} 之间没有差异`
+      `${currentBranch} 中没有未包含在 ${baseBranch} 的提交差异`
     );
     return;
   }
 
-  // ── 6. 确认 ──
+  // ── 6. 选择文档类型 ──
   const summary = `${diffResult.fileDiffs.length} 个文件, +${diffResult.totalAdditions} -${diffResult.totalDeletions}`;
-  const confirm = await vscode.window.showInformationMessage(
-    `发现差异：${summary}。生成 AI Review 报告？`,
-    { modal: false },
-    "生成报告",
-    "取消"
+  const docType = await vscode.window.showQuickPick(
+    [
+      { label: "$(file-text) 代码审查报告", description: "Code Review 文档", value: "review" as DocumentType },
+      { label: "$(lightbulb) 技术方案文档", description: "反向推导技术实现方案", value: "tech-spec" as DocumentType },
+    ],
+    {
+      placeHolder: `发现差异：${summary}。请选择要生成的文档类型`,
+      title: "选择文档类型",
+    }
   );
 
-  if (confirm !== "生成报告") return;
+  if (!docType) return;
 
   // ── 7. 调用 LLM ──
   const llm = new LLMService(config);
-  let reviewContent: string;
+  let content: string;
+
+  const progressTitle = docType.value === "tech-spec"
+    ? "AI 技术方案生成 (DeepSeek)"
+    : "AI Code Review (DeepSeek)";
 
   try {
-    reviewContent = await vscode.window.withProgress(
+    content = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: "AI Code Review (DeepSeek)",
+        title: progressTitle,
         cancellable: false,
       },
       async (progress) => {
-        return llm.generateReview(diffResult, (msg) =>
+        return llm.generate(diffResult, docType.value, (msg) =>
           progress.report({ message: msg })
         );
       }
@@ -148,12 +157,14 @@ async function runReview() {
     const filePath = await ReportGenerator.generate(
       workspaceRoot,
       diffResult,
-      reviewContent,
+      content,
+      docType.value,
       outputDir || undefined
     );
 
+    const docLabel = docType.value === "tech-spec" ? "技术方案" : "Review 报告";
     vscode.window.showInformationMessage(
-      `Review 报告已生成: ${filePath.split(/[/\\]/).pop()}`
+      `${docLabel}已生成: ${filePath.split(/[/\\]/).pop()}`
     );
   } catch (err: any) {
     vscode.window.showErrorMessage(`生成报告文件失败: ${err.message}`);
