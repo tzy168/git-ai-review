@@ -2,7 +2,7 @@
     "name": "ai-git-branch-diff-review",
     "displayName": "AI Git Branch Diff Review",
     "description": "Compare git branches with AI-powered code review (DeepSeek)",
-    "version": "1.0.0",
+    "version": "2.0.1",
     "publisher": "refe",
     "author": "refe",
     "icon": "media/icon.png",
@@ -49,8 +49,8 @@
           },
           "git-ai-review.model": {
             "type": "string",
-            "default": "deepseek-chat",
-            "enum": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-coder", "deepseek-reasoner"],
+            "default": "deepseek-v4-flash",
+            "enum": ["deepseek-v4-pro", "deepseek-v4-flash"],
             "description": "使用的模型"
           },
           "git-ai-review.language": {

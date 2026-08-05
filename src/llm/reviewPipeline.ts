@@ -58,7 +58,7 @@ export async function runReviewPipeline(
   if (totalChars <= maxCharsPerChunk) {
     onProgress?.(`正在${actionLabel} (${(totalChars / 1000).toFixed(0)}K 字符)...`);
     const content = await perChunkChain.invoke(buildInput(fileDiffs), invokeOptions);
-    if (!content) throw new Error("LLM 返回空内容");
+    if (!content?.trim()) throw new Error("LLM 返回空内容");
     return content;
   }
 
@@ -83,7 +83,7 @@ export async function runReviewPipeline(
       );
 
       const result = await perChunkChain.invoke(buildInput(chunk), invokeOptions);
-      if (!result) throw new Error("LLM 返回空内容");
+      if (!result?.trim()) throw new Error("LLM 返回空内容");
       partialResults[i] = result;
     }
   };
@@ -108,6 +108,6 @@ export async function runReviewPipeline(
     language,
   };
   const merged = await mergeChain.invoke(mergeInput, invokeOptions);
-  if (!merged) throw new Error("LLM 返回空内容");
+  if (!merged?.trim()) throw new Error("LLM 返回空内容");
   return merged;
 }

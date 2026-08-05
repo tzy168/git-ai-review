@@ -12,13 +12,20 @@ import type { LLMConfig } from "../llmService";
  *
  * 兼容历史配置：原代码使用 `${baseUrl}/v1`，此处保持一致，
  * 以便用户配置的自定义代理路径行为不变。
+ *
+ * DeepSeek V4 默认开启 thinking：reasoning 与正文共用 max_tokens，
+ * 长 Review 提示极易把额度耗在 reasoning 上，导致 content 为空、
+ * 抛出「LLM 返回空内容」。审查场景关闭 thinking，并给足输出额度。
  */
 export function createChatModel(config: LLMConfig): BaseChatModel {
   return new ChatDeepSeek({
     apiKey: config.apiKey,
     model: config.model,
     temperature: 0.2,
-    maxTokens: 8192,
+    maxTokens: 16384,
     configuration: { baseURL: `${config.baseUrl}/v1` },
+    modelKwargs: {
+      thinking: { type: "disabled" },
+    },
   });
 }
